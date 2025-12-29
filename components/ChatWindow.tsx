@@ -46,11 +46,26 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ userName, channelId, channelNam
       const messagesRef = collection(db, 'channels', channelId, 'messages');
       await addDoc(messagesRef, {
         text,
+        type: 'text',
         senderName: userName,
         createdAt: serverTimestamp()
       });
     } catch (error) {
       console.error("Error sending message:", error);
+    }
+  };
+
+  const handleSendGif = async (gifUrl: string) => {
+    try {
+      const messagesRef = collection(db, 'channels', channelId, 'messages');
+      await addDoc(messagesRef, {
+        type: 'gif',
+        gifUrl: gifUrl,
+        senderName: userName,
+        createdAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Error sending GIF:", error);
     }
   };
 
@@ -116,7 +131,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ userName, channelId, channelNam
 
       {/* Footer */}
       <div className="p-4 bg-white border-t border-slate-100">
-        <MessageInput onSend={handleSendMessage} placeholder={`Message #${channelName}`} />
+        <MessageInput 
+          onSend={handleSendMessage} 
+          onSendGif={handleSendGif}
+          placeholder={`Message #${channelName}`} 
+        />
       </div>
     </div>
   );

@@ -9,9 +9,12 @@ export interface Channel {
 
 export interface Message {
   id: string;
-  text: string;
+  text?: string;
+  type?: 'text' | 'gif';
+  gifUrl?: string;
   senderName: string;
   createdAt: Timestamp | null;
+  editedAt?: Timestamp | null;
 }
 
 export interface User {
