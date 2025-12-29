@@ -1,0 +1,5 @@
+{
+  "name": "Mini Team Chat",
+  "description": "A simplified, real-time Slack-like chat application using React, Tailwind CSS, and Firebase Firestore with a guest-based naming system.",
+  "requestFramePermissions": []
+}
