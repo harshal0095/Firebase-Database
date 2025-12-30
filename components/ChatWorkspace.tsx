@@ -15,6 +15,7 @@ const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({ userName, onLogout }) => 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Initialize and listen to channels
   useEffect(() => {
@@ -78,17 +79,31 @@ const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({ userName, onLogout }) => 
   const activeChannel = channels.find(c => c.id === activeChannelId);
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden relative">
       <Sidebar 
         userName={userName}
         channels={channels} 
         activeChannelId={activeChannelId} 
-        onSelectChannel={setActiveChannelId}
+        onSelectChannel={(id) => {
+          setActiveChannelId(id);
+          setSidebarOpen(false); // Close on selection for mobile
+        }}
         onCreateChannel={handleCreateChannel}
         onDeleteChannel={handleDeleteChannel}
         onLogout={onLogout}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
-      <div className="flex-1 flex flex-col bg-white overflow-hidden">
+      
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-20 md:hidden backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <div className="flex-1 flex flex-col bg-white overflow-hidden w-full">
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-slate-400">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -98,9 +113,16 @@ const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({ userName, onLogout }) => 
             userName={userName} 
             channelId={activeChannelId} 
             channelName={activeChannel?.name || ''} 
+            onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-slate-400 p-8 text-center">
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 text-center">
+            <button 
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden mb-4 p-2 text-indigo-600 border border-indigo-200 rounded-lg"
+            >
+              Open Channels
+            </button>
             <div>
               <p className="text-xl font-medium text-slate-600">No channel selected</p>
               <p className="mt-2">Select or create a channel from the sidebar to start chatting.</p>

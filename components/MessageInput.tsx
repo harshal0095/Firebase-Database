@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 interface MessageInputProps {
   onSend: (text: string) => void;
@@ -13,31 +13,43 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, onSendGif, placehol
   const [gifSearch, setGifSearch] = useState('');
   const [gifs, setGifs] = useState<any[]>([]);
   const [loadingGifs, setLoadingGifs] = useState(false);
+  const [gifError, setGifError] = useState<string | null>(null);
 
-  const fetchGifs = async (query: string) => {
+  const fetchGifs = useCallback(async (query: string) => {
     setLoadingGifs(true);
+    setGifError(null);
     try {
-      const apiKey = 'dc6zaTOxFJmzC'; // Public Beta Key
-      const url = query 
-        ? `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(query)}&limit=12&rating=g`
-        : `https://api.giphy.com/v1/gifs/trending?api_key=${apiKey}&limit=12&rating=g`;
+      // Using a more reliable public key
+      const apiKey = 'LIVDSRZ79vof8vHwH8s4fM2fU816tU6u'; 
+      const url = query.trim()
+        ? `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(query)}&limit=20&rating=g`
+        : `https://api.giphy.com/v1/gifs/trending?api_key=${apiKey}&limit=20&rating=g`;
       
       const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch GIFs');
       const data = await response.json();
       setGifs(data.data || []);
     } catch (error) {
       console.error("Error fetching gifs:", error);
+      setGifError("Failed to load GIFs. Please try again.");
     } finally {
       setLoadingGifs(false);
     }
-  };
+  }, []);
+
+  // Debounce search
+  useEffect(() => {
+    if (!showGifPicker) return;
+    
+    const timer = setTimeout(() => {
+      fetchGifs(gifSearch);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [gifSearch, showGifPicker, fetchGifs]);
 
   const toggleGifPicker = () => {
-    const newState = !showGifPicker;
-    setShowGifPicker(newState);
-    if (newState && gifs.length === 0) {
-      fetchGifs('');
-    }
+    setShowGifPicker(!showGifPicker);
   };
 
   const handleGifSelect = (gifUrl: string) => {
@@ -70,10 +82,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, onSendGif, placehol
               placeholder="Search Giphy..."
               className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500"
               value={gifSearch}
-              onChange={(e) => {
-                setGifSearch(e.target.value);
-                fetchGifs(e.target.value);
-              }}
+              onChange={(e) => setGifSearch(e.target.value)}
             />
             <button 
               onClick={() => setShowGifPicker(false)}
@@ -86,20 +95,32 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, onSendGif, placehol
           </div>
           <div className="p-2 overflow-y-auto grid grid-cols-2 gap-2 h-64">
             {loadingGifs ? (
-              <div className="col-span-2 flex items-center justify-center h-full text-slate-400 text-xs italic">
+              <div className="col-span-2 flex flex-col items-center justify-center h-full text-slate-400 text-xs italic gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
                 Loading GIFs...
+              </div>
+            ) : gifError ? (
+              <div className="col-span-2 flex flex-col items-center justify-center h-full text-red-400 text-xs italic gap-2">
+                {gifError}
+                <button 
+                  onClick={() => fetchGifs(gifSearch)}
+                  className="text-indigo-600 font-bold underline"
+                >
+                  Retry
+                </button>
               </div>
             ) : gifs.length > 0 ? (
               gifs.map((gif) => (
                 <button 
                   key={gif.id}
-                  onClick={() => handleGifSelect(gif.images.fixed_height.url)}
-                  className="rounded-lg overflow-hidden hover:opacity-80 transition-opacity bg-slate-100 aspect-video"
+                  onClick={() => handleGifSelect(gif.images.original.url)}
+                  className="rounded-lg overflow-hidden hover:opacity-80 transition-opacity bg-slate-100 aspect-video relative group/item"
                 >
                   <img 
                     src={gif.images.fixed_height_small.url} 
                     alt={gif.title} 
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 </button>
               ))
@@ -110,7 +131,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, onSendGif, placehol
             )}
           </div>
           <div className="p-2 border-t border-slate-100 bg-slate-50 flex justify-center">
-             <img src="https://raw.githubusercontent.com/Giphy/giphy-js/master/packages/components/src/assets/powered_by_giphy.png" alt="Powered by Giphy" className="h-4" />
+             <img src="https://giphy.com/static/img/powered_by_giphy.png" alt="Powered by Giphy" className="h-4 object-contain" />
           </div>
         </div>
       )}

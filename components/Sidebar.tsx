@@ -10,6 +10,8 @@ interface SidebarProps {
   onCreateChannel: (name: string) => void;
   onDeleteChannel: (id: string) => void;
   onLogout: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -19,7 +21,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSelectChannel, 
   onCreateChannel,
   onDeleteChannel,
-  onLogout 
+  onLogout,
+  isOpen,
+  onClose
 }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
@@ -34,20 +38,34 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div className="w-64 md:w-72 bg-slate-900 flex flex-col h-full text-slate-300">
+    <div className={`
+      fixed inset-y-0 left-0 z-30 w-72 bg-slate-900 flex flex-col h-full text-slate-300 transform transition-transform duration-300 ease-in-out
+      md:relative md:translate-x-0
+      ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+    `}>
       {/* Workspace Header */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+      <div className="p-4 border-b border-slate-800 flex items-center justify-between h-16">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
           <span className="font-bold text-white truncate max-w-[120px]">Workspace</span>
         </div>
-        <button 
-          onClick={onLogout}
-          className="text-xs text-slate-500 hover:text-red-400 transition-colors"
-          title="Sign out as guest"
-        >
-          Logout
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={onLogout}
+            className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+            title="Sign out as guest"
+          >
+            Logout
+          </button>
+          <button 
+            onClick={onClose}
+            className="md:hidden text-slate-500 hover:text-white"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* User Info */}

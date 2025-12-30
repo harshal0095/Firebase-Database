@@ -71,11 +71,14 @@ const Message: React.FC<MessageProps> = ({ message, isMe, onDelete, onEdit }) =>
           ) : (
             <>
               {message.type === 'gif' ? (
-                <div className="rounded-lg overflow-hidden max-w-[250px]">
+                <div className="rounded-lg overflow-hidden max-w-[250px] bg-slate-200 animate-pulse min-h-[100px] flex items-center justify-center relative">
                   <img 
                     src={message.gifUrl} 
                     alt="GIF" 
-                    className="w-full h-auto block"
+                    className="w-full h-auto block relative z-10"
+                    onLoad={(e) => {
+                      (e.target as HTMLImageElement).parentElement?.classList.remove('animate-pulse', 'bg-slate-200');
+                    }}
                   />
                 </div>
               ) : (
@@ -85,17 +88,17 @@ const Message: React.FC<MessageProps> = ({ message, isMe, onDelete, onEdit }) =>
               )}
               
               {isMe && (
-                <div className="absolute -left-16 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover:opacity-100 transition-all duration-200">
+                <div className="absolute -left-12 md:-left-16 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white/80 backdrop-blur-sm md:bg-transparent rounded-full md:rounded-none shadow-sm md:shadow-none p-1 md:p-0 border border-slate-100 md:border-none z-10">
                   {message.type !== 'gif' && (
                     <button 
                       onClick={() => {
                         setIsEditing(true);
                         setEditText(message.text || '');
                       }}
-                      className="p-2 text-slate-400 hover:text-indigo-500"
+                      className="p-1.5 md:p-2 text-slate-400 hover:text-indigo-500"
                       title="Edit message"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>
                     </button>
@@ -107,10 +110,10 @@ const Message: React.FC<MessageProps> = ({ message, isMe, onDelete, onEdit }) =>
                         onDelete();
                       }
                     }}
-                    className="p-2 text-slate-400 hover:text-red-500"
+                    className="p-1.5 md:p-2 text-slate-400 hover:text-red-500"
                     title="Delete message"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
