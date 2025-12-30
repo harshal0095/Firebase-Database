@@ -1,19 +1,24 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase/config';
 
 interface MessageInputProps {
   onSend: (text: string) => void;
   onSendGif: (url: string) => void;
+  onSendImage: (url: string) => void;
   placeholder?: string;
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ onSend, onSendGif, placeholder }) => {
+const MessageInput: React.FC<MessageInputProps> = ({ onSend, onSendGif, onSendImage, placeholder }) => {
   const [text, setText] = useState('');
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [gifSearch, setGifSearch] = useState('');
   const [gifs, setGifs] = useState<any[]>([]);
   const [loadingGifs, setLoadingGifs] = useState(false);
   const [gifError, setGifError] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchGifs = useCallback(async (query: string) => {
     setLoadingGifs(true);
@@ -52,10 +57,41 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, onSendGif, placehol
     setShowGifPicker(!showGifPicker);
   };
 
-  const handleGifSelect = (gifUrl: string) => {
-    onSendGif(gifUrl);
+  const handleGifSelect = (gif: any) => {
+    // Use fixed_height for better performance in chat, fall back to original if needed
+    const url = gif.images.fixed_height?.url || gif.images.original.url;
+    onSendGif(url);
     setShowGifPicker(false);
     setGifSearch('');
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 10MB now, 5MB might be too small for some mobile photos)
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image is too large. Max size is 10MB.");
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+      const storageRef = ref(storage, `chat_images/${fileName}`);
+      
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      
+      onSendImage(downloadURL);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      alert(`Failed to upload image: ${error.message || 'Unknown error'}`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -113,7 +149,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, onSendGif, placehol
               gifs.map((gif) => (
                 <button 
                   key={gif.id}
-                  onClick={() => handleGifSelect(gif.images.original.url)}
+                  onClick={() => handleGifSelect(gif)}
                   className="rounded-lg overflow-hidden hover:opacity-80 transition-opacity bg-slate-100 aspect-video relative group/item"
                 >
                   <img 
@@ -146,16 +182,36 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSend, onSendGif, placehol
             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-none text-slate-700 min-h-[48px] max-h-32"
             style={{ height: 'auto' }}
           />
-          <div className="absolute right-3 bottom-3 flex items-center gap-2">
+          <div className="absolute right-3 bottom-3 flex items-center gap-1 md:gap-2">
+            <input 
+              type="file"
+              accept="image/*"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+            />
+            <button
+              type="button"
+              disabled={uploadingImage}
+              onClick={() => fileInputRef.current?.click()}
+              className={`p-1.5 rounded-lg transition-colors ${uploadingImage ? 'bg-slate-100 text-slate-300' : 'text-slate-400 hover:text-indigo-500 hover:bg-slate-100'}`}
+              title="Upload Image"
+            >
+              {uploadingImage ? (
+                <div className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              )}
+            </button>
             <button
               type="button"
               onClick={toggleGifPicker}
               className={`p-1.5 rounded-lg transition-colors ${showGifPicker ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:text-indigo-500 hover:bg-slate-100'}`}
               title="Add GIF"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+              <span className="text-[10px] font-black leading-none border-2 border-current px-0.5 rounded-sm">GIF</span>
             </button>
           </div>
         </div>

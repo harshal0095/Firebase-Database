@@ -12,6 +12,7 @@ interface MessageProps {
 const Message: React.FC<MessageProps> = ({ message, isMe, onDelete, onEdit }) => {
   const [isEditing, setIsEditing] = React.useState(false);
   const [editText, setEditText] = React.useState(message.text);
+  const [showReadBy, setShowReadBy] = React.useState(false);
 
   const formatTime = (timestamp: any) => {
     if (!timestamp) return '...';
@@ -31,11 +32,14 @@ const Message: React.FC<MessageProps> = ({ message, isMe, onDelete, onEdit }) =>
             {message.senderName}
           </span>
         )}
-        <div className={`px-4 py-2.5 rounded-2xl shadow-sm relative group ${
-          isMe 
-            ? 'bg-indigo-600 text-white rounded-tr-none' 
-            : 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200'
-        }`}>
+        <div 
+          onClick={() => isMe && setShowReadBy(!showReadBy)}
+          className={`px-4 py-2.5 rounded-2xl shadow-sm relative group transition-all ${
+            isMe 
+              ? 'bg-indigo-600 text-white rounded-tr-none cursor-pointer' 
+              : 'bg-slate-100 text-slate-800 rounded-tl-none border border-slate-200 cursor-default'
+          }`}
+        >
           {isEditing ? (
             <div className="flex flex-col gap-2 min-w-[200px]">
               <textarea
@@ -70,14 +74,21 @@ const Message: React.FC<MessageProps> = ({ message, isMe, onDelete, onEdit }) =>
             </div>
           ) : (
             <>
-              {message.type === 'gif' ? (
-                <div className="rounded-lg overflow-hidden max-w-[250px] bg-slate-200 animate-pulse min-h-[100px] flex items-center justify-center relative">
+              {message.type === 'gif' || message.type === 'image' ? (
+                <div className={`rounded-xl overflow-hidden max-w-full sm:max-w-[320px] bg-slate-100 min-h-[150px] flex items-center justify-center relative border border-slate-200/50 ${!message.imageUrl && !message.gifUrl ? 'animate-pulse' : ''}`}>
                   <img 
-                    src={message.gifUrl} 
-                    alt="GIF" 
-                    className="w-full h-auto block relative z-10"
+                    src={message.type === 'gif' ? message.gifUrl : message.imageUrl} 
+                    alt={message.type === 'gif' ? 'GIF' : 'Image'} 
+                    className="w-full h-auto block relative z-10 transition-opacity duration-300 opacity-0"
                     onLoad={(e) => {
-                      (e.target as HTMLImageElement).parentElement?.classList.remove('animate-pulse', 'bg-slate-200');
+                      const img = e.target as HTMLImageElement;
+                      img.style.opacity = '1';
+                      img.parentElement?.classList.remove('animate-pulse', 'bg-slate-100');
+                    }}
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      img.parentElement?.classList.add('bg-red-50');
+                      img.parentElement?.classList.remove('animate-pulse');
                     }}
                   />
                 </div>
@@ -89,7 +100,7 @@ const Message: React.FC<MessageProps> = ({ message, isMe, onDelete, onEdit }) =>
               
               {isMe && (
                 <div className="absolute -left-12 md:-left-16 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white/80 backdrop-blur-sm md:bg-transparent rounded-full md:rounded-none shadow-sm md:shadow-none p-1 md:p-0 border border-slate-100 md:border-none z-10">
-                  {message.type !== 'gif' && (
+                  {message.type !== 'gif' && message.type !== 'image' && (
                     <button 
                       onClick={() => {
                         setIsEditing(true);
@@ -122,6 +133,21 @@ const Message: React.FC<MessageProps> = ({ message, isMe, onDelete, onEdit }) =>
             </>
           )}
         </div>
+
+        {isMe && showReadBy && message.readBy && message.readBy.length > 0 && (
+          <div className={`mt-1 flex items-center gap-1 text-[9px] font-medium animate-in fade-in slide-in-from-top-1 flex-row-reverse text-indigo-400`}>
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+            </svg>
+            <span className="truncate">
+              Read by: {message.readBy.filter(u => u !== message.senderName).length > 0 
+                ? message.readBy.filter(u => u !== message.senderName).join(', ') 
+                : 'Only you'}
+            </span>
+          </div>
+        )}
+
         <div className={`flex items-center gap-2 mt-1 px-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
           <span className="text-[10px] text-slate-400 font-medium">
             {formatTime(message.createdAt)}
