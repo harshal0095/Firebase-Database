@@ -286,6 +286,18 @@ const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({ userName, onLogout }) => 
     }
   };
 
+  const handleLeaveChannel = async (channelId: string) => {
+    try {
+      const channelRef = doc(db, 'channels', channelId);
+      await updateDoc(channelRef, {
+        members: arrayRemove(userName)
+      });
+      setActiveChannelId(null);
+    } catch (error) {
+      console.error("Error leaving channel:", error);
+    }
+  };
+
   const seedInitialChannels = async () => {
     const defaults = ['buddy'];
     for (const name of defaults) {
@@ -435,6 +447,7 @@ const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({ userName, onLogout }) => 
             onAddMember={handleAddMember}
             onRemoveMember={handleRemoveMember}
             onDeleteChannel={handleDeleteChannel}
+            onLeaveChannel={handleLeaveChannel}
             isAdmin={activeChannel?.owner === userName}
             allUsers={users}
             members={activeChannel?.members}

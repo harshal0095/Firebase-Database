@@ -20,6 +20,8 @@ interface ChatWindowProps {
   onAddMember?: (channelId: string, memberUserName: string) => void;
   onRemoveMember?: (channelId: string, memberUserName: string) => void;
   onDeleteChannel?: (id: string) => void;
+  onLeaveChannel?: (id: string) => void;
+  onToggleReaction?: (messageId: string, emoji: string) => void;
   isAdmin?: boolean;
   allUsers?: User[];
   members?: string[];
@@ -49,6 +51,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onAddMember,
   onRemoveMember,
   onDeleteChannel,
+  onLeaveChannel,
+  onToggleReaction,
   isAdmin,
   allUsers = [],
   members = [],
@@ -58,6 +62,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [showAddMember, setShowAddMember] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const isMember = members.includes(userName);
+  const canLeave = !isDM && isMember && !isAdmin && channelName !== 'buddy';
 
   // Block status logic
   const isBlockedByMe = currentUser?.blockedUsers?.includes(activeUser?.id || '') || false;
@@ -217,6 +224,44 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const handleToggleReaction = async (messageId: string, emoji: string) => {
+    try {
+      const messageRef = doc(db, 'channels', channelId, 'messages', messageId);
+      const msg = messages.find(m => m.id === messageId);
+      if (!msg) return;
+
+      const currentReactions = msg.reactions || {};
+      const updates: any = {};
+      
+      // Find if user has already reacted with ANY emoji
+      let existingEmoji = '';
+      for (const [e, users] of Object.entries(currentReactions)) {
+        if (users.includes(userName)) {
+          existingEmoji = e;
+          break;
+        }
+      }
+
+      if (existingEmoji === emoji) {
+        // User clicked the same emoji - remove it (toggle off)
+        updates[`reactions.${emoji}`] = currentReactions[emoji].filter(u => u !== userName);
+      } else {
+        // User clicked a different emoji or hasn't reacted yet
+        // 1. Remove previous reaction if it exists
+        if (existingEmoji) {
+          updates[`reactions.${existingEmoji}`] = currentReactions[existingEmoji].filter(u => u !== userName);
+        }
+        // 2. Add the new reaction
+        const targetEmojiUsers = currentReactions[emoji] || [];
+        updates[`reactions.${emoji}`] = [...targetEmojiUsers, userName];
+      }
+
+      await updateDoc(messageRef, updates);
+    } catch (error) {
+      console.error("Error toggling reaction:", error);
+    }
+  };
+
   const formatLastSeen = (user?: User | null) => {
     if (!user) return '';
     // If the other user has blocked me, or if I have blocked them, don't show real status
@@ -338,6 +383,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-4">
+          {!isDM && canLeave && (
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to leave this group?')) {
+                  onLeaveChannel?.(channelId);
+                }
+              }}
+              className={`text-[10px] md:text-xs font-bold px-3 py-1.5 rounded-full transition-all border ${
+                isDarkTheme 
+                  ? 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-700' 
+                  : 'bg-slate-50 text-slate-500 border-slate-100 hover:text-indigo-600 hover:bg-slate-100'
+              }`}
+            >
+              Leave Group
+            </button>
+          )}
+
           {!isDM && isAdmin && (
             <div className="flex items-center gap-2">
               <button
@@ -440,8 +502,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               key={msg.id} 
               message={msg} 
               isMe={msg.senderName === userName} 
+              userName={userName}
               onDelete={() => handleDeleteMessage(msg.id)}
               onEdit={(newText) => handleEditMessage(msg.id, newText)}
+              onToggleReaction={(emoji) => handleToggleReaction(msg.id, emoji)}
             />
           ))
         )}

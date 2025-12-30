@@ -24,6 +24,7 @@ export interface Message {
   createdAt: Timestamp | null;
   editedAt?: Timestamp | null;
   readBy?: string[];
+  reactions?: { [emoji: string]: string[] }; // emoji -> array of userNames
 }
 
 export interface User {

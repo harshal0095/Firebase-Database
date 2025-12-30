@@ -7,12 +7,17 @@ interface MessageProps {
   isMe: boolean;
   onDelete: () => void;
   onEdit: (newText: string) => void;
+  onToggleReaction?: (emoji: string) => void;
+  userName: string;
 }
 
-const Message: React.FC<MessageProps> = ({ message, isMe, onDelete, onEdit }) => {
+const emojis = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+
+const Message: React.FC<MessageProps> = ({ message, isMe, onDelete, onEdit, onToggleReaction, userName }) => {
   const [isEditing, setIsEditing] = React.useState(false);
   const [editText, setEditText] = React.useState(message.text);
   const [showReadBy, setShowReadBy] = React.useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = React.useState(false);
 
   const formatTime = (timestamp: any) => {
     if (!timestamp) return '...';
@@ -99,7 +104,34 @@ const Message: React.FC<MessageProps> = ({ message, isMe, onDelete, onEdit }) =>
               )}
               
               {isMe && (
-                <div className="absolute -left-12 md:-left-16 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white/80 backdrop-blur-sm md:bg-transparent rounded-full md:rounded-none shadow-sm md:shadow-none p-1 md:p-0 border border-slate-100 md:border-none z-10">
+                <div className="absolute -left-20 md:-left-24 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white/80 backdrop-blur-sm md:bg-transparent rounded-full md:rounded-none shadow-sm md:shadow-none p-1 md:p-0 border border-slate-100 md:border-none z-10">
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className="p-1.5 md:p-2 text-slate-400 hover:text-yellow-500"
+                      title="Add reaction"
+                    >
+                      <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </button>
+                    {showEmojiPicker && (
+                      <div className="absolute bottom-full left-0 mb-2 bg-white rounded-full shadow-lg border border-slate-100 p-1 flex gap-1 z-50 animate-in zoom-in-50">
+                        {emojis.map(emoji => (
+                          <button
+                            key={emoji}
+                            onClick={() => {
+                              onToggleReaction?.(emoji);
+                              setShowEmojiPicker(false);
+                            }}
+                            className="hover:scale-125 transition-transform p-1 text-base"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   {message.type !== 'gif' && message.type !== 'image' && (
                     <button 
                       onClick={() => {
@@ -130,9 +162,66 @@ const Message: React.FC<MessageProps> = ({ message, isMe, onDelete, onEdit }) =>
                   </button>
                 </div>
               )}
+
+              {!isMe && (
+                <div className="absolute -right-8 md:-right-10 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover:opacity-100 transition-all duration-200 z-10">
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className="p-1.5 md:p-2 text-slate-400 hover:text-yellow-500"
+                      title="Add reaction"
+                    >
+                      <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </button>
+                    {showEmojiPicker && (
+                      <div className="absolute bottom-full right-0 mb-2 bg-white rounded-full shadow-lg border border-slate-100 p-1 flex gap-1 z-50 animate-in zoom-in-50">
+                        {emojis.map(emoji => (
+                          <button
+                            key={emoji}
+                            onClick={() => {
+                              onToggleReaction?.(emoji);
+                              setShowEmojiPicker(false);
+                            }}
+                            className="hover:scale-125 transition-transform p-1 text-base"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
+
+        {/* Reactions Display */}
+        {message.reactions && Object.entries(message.reactions).some(([_, users]) => users.length > 0) && (
+          <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+            {Object.entries(message.reactions).map(([emoji, users]) => {
+              if (users.length === 0) return null;
+              const hasReacted = users.includes(userName);
+              return (
+                <button
+                  key={emoji}
+                  onClick={() => onToggleReaction?.(emoji)}
+                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] border transition-all ${
+                    hasReacted 
+                      ? 'bg-indigo-50 border-indigo-200 text-indigo-700 font-bold' 
+                      : 'bg-white border-slate-100 text-slate-600 hover:border-slate-200'
+                  }`}
+                  title={users.join(', ')}
+                >
+                  <span>{emoji}</span>
+                  <span>{users.length}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {isMe && showReadBy && message.readBy && message.readBy.length > 0 && (
           <div className={`mt-1 flex items-center gap-1 text-[9px] font-medium animate-in fade-in slide-in-from-top-1 flex-row-reverse text-indigo-400`}>
